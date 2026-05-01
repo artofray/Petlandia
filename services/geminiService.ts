@@ -4,69 +4,48 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { GoogleGenAI, Type } from "@google/genai";
-import { AIGoal, BuildingType, CityStats, Grid, NewsItem, PetAvatar } from "../types";
-import { BUILDINGS } from "../constants";
+import { PetAvatar, PetStats, PetResponse } from "../types";
 
 const modelId = 'gemini-2.5-flash';
 
-// --- Goal Generation ---
-
-const goalSchema = {
+const petResponseSchema = {
   type: Type.OBJECT,
   properties: {
-    description: {
-      type: Type.STRING,
-      description: "A short, cute, and funny description of the goal from the perspective of a Pet Mayor.",
-    },
-    targetType: {
-      type: Type.STRING,
-      enum: ['population', 'money', 'building_count'],
-      description: "The metric to track.",
-    },
-    targetValue: {
-      type: Type.INTEGER,
-      description: "The target numeric value to reach.",
-    },
-    buildingType: {
-      type: Type.STRING,
-      enum: [
-        BuildingType.Residential, 
-        BuildingType.Commercial, 
-        BuildingType.Industrial, 
-        BuildingType.Park, 
-        BuildingType.Entertainment,
-        BuildingType.Service,
-        BuildingType.Road
-      ],
-      description: "Required if targetType is building_count.",
-    },
-    reward: {
-      type: Type.INTEGER,
-      description: "Treat (money) reward for completion.",
-    },
+    message: { type: Type.STRING, description: "A fun, expressive, charming response from the pet (with emojis)." },
+    statChanges: {
+      type: Type.OBJECT,
+      properties: {
+        hunger: { type: Type.INTEGER, description: "Change in hunger (-15 to 20)" },
+        happiness: { type: Type.INTEGER, description: "Change in happiness (-10 to 25)" },
+        energy: { type: Type.INTEGER, description: "Change in energy (-20 to 15)" },
+        experience: { type: Type.INTEGER, description: "XP gained (0 to 50)" }
+      }
+    }
   },
-  required: ['description', 'targetType', 'targetValue', 'reward'],
+  required: ["message", "statChanges"],
 };
 
-export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AIGoal | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Count buildings
-  const counts: Record<string, number> = {};
-  grid.flat().forEach(tile => {
-    counts[tile.buildingType] = (counts[tile.buildingType] || 0) + 1;
-  });
-
+export const interactWithPet = async (
+  avatar: PetAvatar,
+  stats: PetStats,
+  action: string,
+  contextData?: string
+): Promise<PetResponse | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
   const context = `
-    You are the "Mayor Whiskers" or "Director Doggo", the AI City Paw-lanner for "Petlandia".
-    Current City Stats:
-    Day: ${stats.day}
-    Level: ${stats.level}
-    Treats: ${stats.money}
-    Pets: ${stats.population}
-    Buildings: ${JSON.stringify(counts)}
+    You are ${avatar.name}, a virtual pet. You are a ${avatar.stage} ${avatar.species}.
+    Your personality is ${avatar.personality}. Your aesthetics are ${avatar.colorTheme}.
+    Current stats: Hunger ${stats.hunger}%, Happiness ${stats.happiness}%, Energy ${stats.energy}%.
+    Level: ${stats.level}.
+    ${contextData ? `Extra Context: ${contextData}` : ''}
+    
+    Respond in character as the pet. Keep it short (1-2 sentences max, like a mobile game character). 
+    Use emojis. If hunger is low, complain about food. If sleepy, act tired.
   `;
 
-  const prompt = `Generate a new goal for the player. Use pet puns. Return JSON.`;
+  const prompt = `The user clicked/said: "${action}". 
+  Provide your dialogue reaction and determine how the stats change.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -74,102 +53,48 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
       contents: `${context}\n${prompt}`,
       config: {
         responseMimeType: "application/json",
-        responseSchema: goalSchema,
+        responseSchema: petResponseSchema,
         temperature: 0.8,
       },
     });
 
     if (response.text) {
-      const goalData = JSON.parse(response.text) as Omit<AIGoal, 'completed'>;
-      return { ...goalData, completed: false };
+      return JSON.parse(response.text) as PetResponse;
     }
   } catch (error) {
-    console.error("Error generating goal:", error);
+    console.error("Error generating pet response:", error);
   }
   return null;
 };
 
-// --- News Feed Generation ---
-
-const newsSchema = {
-  type: Type.OBJECT,
-  properties: {
-    text: { type: Type.STRING, description: "A one-sentence funny news headline." },
-    type: { type: Type.STRING, enum: ['positive', 'negative', 'neutral'] },
-  },
-  required: ['text', 'type'],
-};
-
-export const generateNewsEvent = async (stats: CityStats, recentAction: string | null): Promise<NewsItem | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const context = `Petlandia Stats - Pets: ${stats.population}, Money: ${stats.money}, Day: ${stats.day}.`;
-  const prompt = "Generate a very short, funny news headline about the city. Topics: Zoomies, treats, naps, squirrels.";
-
+export const generatePetImage = async (species: string, theme: string): Promise<string | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  // Bright, casual mobile game style
+  const prompt = `A highly polished, incredibly cute 2D game art style virtual pet. 
+  Species: ${species}. Theme/Colors: ${theme}. 
+  Thick clean outlines, vibrant colors, expressive large friendly eyes. 
+  Solid white background. Studio Ghibli meets modern casual mobile game art. 
+  Chibi style, full body, facing slightly forward, happy expression. Perfect lighting.`;
+  
   try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: `${context}\n${prompt}`,
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-002',
+      prompt: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: newsSchema,
-        temperature: 1.0, 
-      },
+        numberOfImages: 1,
+        outputMimeType: "image/jpeg",
+        aspectRatio: "1:1"
+      }
     });
 
-    if (response.text) {
-      const data = JSON.parse(response.text);
-      return {
-        id: Date.now().toString() + Math.random(),
-        text: data.text,
-        type: data.type,
-      };
+    if (response.generatedImages && response.generatedImages.length > 0) {
+      const base64 = response.generatedImages[0].image.imageBytes;
+      return `data:image/jpeg;base64,${base64}`;
     }
   } catch (error) {
-    // Fail silently in UI, log to console
-    console.warn("News generation skipped due to error:", error);
+    console.error("Error generating Pet image:", error);
   }
   return null;
 };
 
-// --- Pet Thought Generation (Translation) ---
-
-const thoughtSchema = {
-  type: Type.OBJECT,
-  properties: {
-    thought: { type: Type.STRING, description: "The translated thought of the pet in English." },
-  },
-  required: ['thought'],
-};
-
-export const generatePetThought = async (stats: CityStats, avatar: PetAvatar): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `
-    You are ${avatar.name}, a ${avatar.species} who runs Petlandia.
-    The city has ${stats.population} pets and ${stats.money} treats.
-    The player has reached Level ${stats.level} (Master of Understanding).
-    
-    Say something wise, funny, or chaotic about the state of the city in one short sentence. 
-    If you are an imaginary pet (Dragon/Ghost/Rock), be thematic.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: thoughtSchema,
-        temperature: 0.9,
-      },
-    });
-
-    if (response.text) {
-      const data = JSON.parse(response.text);
-      return data.thought;
-    }
-  } catch (error) {
-    console.error("Error generating thought:", error);
-    return "The translation device is fuzzy...";
-  }
-  return "...";
-};
