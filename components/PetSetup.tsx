@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { PetAvatar, PetPersonality } from '../types';
-import { Sparkles, Palette, Shuffle, Egg } from 'lucide-react';
+import { Sparkles, Shuffle, Egg } from 'lucide-react';
 import { motion } from 'motion/react';
 import { generatePetImage } from '../services/geminiService';
 
-const SUGGESTED_SPECIES = ['Axolotl', 'Pug', 'Slime', 'Griffin', 'Unicorn', 'Mushroom', 'Cloud', 'Cyborg Kitty', 'Capybara', 'Red Panda', 'Dragon'];
+const REAL_SPECIES = ['Axolotl', 'Pug', 'Capybara', 'Red Panda', 'Otter', 'Fox'];
+const IMAGINARY_SPECIES = ['Slime', 'Griffin', 'Unicorn', 'Dragon', 'Mushroom', 'Cloud', 'Cyborg Kitty'];
+const SUGGESTED_SPECIES = [...REAL_SPECIES, ...IMAGINARY_SPECIES];
 const THEMES = ['Pastel', 'Neon', 'Galaxy', 'Forest', 'Ocean', 'Candy', 'Monochrome'];
 const PERSONALITIES: PetPersonality[] = ['Playful', 'Sleepy', 'Mischievous', 'Grumpy', 'Sweet'];
 
@@ -20,10 +22,18 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
   const [isHatching, setIsHatching] = useState(false);
   const [statusText, setStatusText] = useState('');
 
+  const randomFrom = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
+
+  const applyRandomSetup = () => {
+    setSpecies(randomFrom(SUGGESTED_SPECIES));
+    setColorTheme(randomFrom(THEMES));
+    setPersonality(randomFrom(PERSONALITIES));
+  };
+
   const handleHatch = async () => {
     setIsHatching(true);
     setStatusText('Warming the egg...');
-    
+
     try {
       setStatusText('Visualizing your new friend...');
       const imageUrl = await generatePetImage(species, colorTheme);
@@ -45,35 +55,32 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
   };
 
   if (isHatching) {
-     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#bae6fd]">
-           <motion.div 
-             animate={{ rotate: [-10, 10, -10], y: [0, -20, 0] }}
-             transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
-             className="relative"
-           >
-             <Egg className="w-48 h-48 text-white drop-shadow-2xl fill-white" />
-             <div className="absolute inset-0 flex items-center justify-center text-rose-400 opacity-50">
-                <Sparkles className="w-24 h-24 animate-spin-slow" />
-             </div>
-           </motion.div>
-           <h2 className="mt-8 text-3xl font-black text-slate-800 drop-shadow-md game-font">{statusText}</h2>
-           <div className="mt-4 flex gap-3">
-              <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{animationDelay: '0ms'}} />
-              <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{animationDelay: '150ms'}} />
-              <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{animationDelay: '300ms'}} />
-           </div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#bae6fd]">
+        <motion.div
+          animate={{ rotate: [-10, 10, -10], y: [0, -20, 0] }}
+          transition={{ repeat: Infinity, duration: 1, ease: 'easeInOut' }}
+          className="relative"
+        >
+          <Egg className="w-48 h-48 text-white drop-shadow-2xl fill-white" />
+          <div className="absolute inset-0 flex items-center justify-center text-rose-400 opacity-50">
+            <Sparkles className="w-24 h-24 animate-spin-slow" />
+          </div>
+        </motion.div>
+        <h2 className="mt-8 text-3xl font-black text-slate-800 drop-shadow-md game-font">{statusText}</h2>
+        <div className="mt-4 flex gap-3">
+          <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{ animationDelay: '0ms' }} />
+          <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{ animationDelay: '150ms' }} />
+          <div className="w-5 h-5 bg-white rounded-full animate-bounce shadow-md" style={{ animationDelay: '300ms' }} />
         </div>
-     );
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#bae6fd] relative">
-      
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-[250px] sm:pb-[250px]">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-[280px] sm:pb-[280px]">
         <div className="max-w-xl mx-auto flex flex-col items-center">
-          
           <div className="text-center mb-6">
             <h1 className="text-4xl text-slate-800 drop-shadow-sm flex items-center justify-center gap-2 mb-2">
               <Sparkles className="w-8 h-8 text-amber-400" />
@@ -83,24 +90,22 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
             <p className="text-slate-600 font-bold">Design your perfect companion!</p>
           </div>
 
-          <motion.div 
-            animate={{ y: [0, -10, 0] }} 
+          <motion.div
+            animate={{ y: [0, -10, 0] }}
             transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
             className="mb-8"
           >
-            <div className={`w-32 h-32 rounded-[40%] bg-gradient-to-br from-white to-slate-200 shadow-xl border-4 border-white flex flex-col items-center justify-center`}>
+            <div className="w-32 h-32 rounded-[40%] bg-gradient-to-br from-white to-slate-200 shadow-xl border-4 border-white flex flex-col items-center justify-center">
               <Egg className={`w-16 h-16 ${colorTheme === 'Candy' || colorTheme === 'Pastel' ? 'text-pink-400 fill-pink-200' : colorTheme === 'Mushroom' ? 'text-red-500 fill-red-100' : 'text-blue-400 fill-blue-100'}`} />
               <span className="text-xs font-bold text-slate-400 mt-2">Dormant</span>
             </div>
           </motion.div>
 
           <div className="game-panel w-full p-6 space-y-6">
-            
-            {/* Name Input */}
             <div>
               <label className="block text-slate-500 font-black mb-2 uppercase text-sm">Give it a Name</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Barnaby"
@@ -110,20 +115,25 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
 
             <div className="h-1 bg-slate-100 rounded-full w-full" />
 
-            {/* Species Input */}
             <div>
-              <label className="block text-slate-500 font-black mb-2 uppercase text-sm">
-                Species
-              </label>
-              <input 
-                type="text" 
+              <label className="block text-slate-500 font-black mb-2 uppercase text-sm">Species</label>
+              <input
+                type="text"
                 value={species}
                 onChange={(e) => setSpecies(e.target.value)}
                 placeholder="Axolotl, Pug, Slime..."
                 className="w-full bg-slate-50 border-4 border-slate-200 rounded-2xl px-5 py-4 font-bold text-slate-700 focus:outline-none focus:border-blue-400 text-xl mb-3 transition-colors shadow-inner"
               />
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button onClick={() => setSpecies(randomFrom(REAL_SPECIES))} className="text-sm font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-full border-2 border-emerald-200 transition-colors">
+                  Random Real Animal
+                </button>
+                <button onClick={() => setSpecies(randomFrom(IMAGINARY_SPECIES))} className="text-sm font-bold bg-violet-100 hover:bg-violet-200 text-violet-700 px-4 py-2 rounded-full border-2 border-violet-200 transition-colors">
+                  Random Imaginary
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTED_SPECIES.map(s => (
+                {SUGGESTED_SPECIES.map((s) => (
                   <button key={s} onClick={() => setSpecies(s)} className="text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-full border-2 border-slate-200 transition-colors">
                     {s}
                   </button>
@@ -133,11 +143,10 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
 
             <div className="h-1 bg-slate-100 rounded-full w-full" />
 
-            {/* Color Theme */}
             <div>
               <label className="block text-slate-500 font-black mb-2 uppercase text-sm">Color Theme</label>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {THEMES.map(t => (
+                {THEMES.map((t) => (
                   <button
                     key={t}
                     onClick={() => setColorTheme(t)}
@@ -151,11 +160,10 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
 
             <div className="h-1 bg-slate-100 rounded-full w-full" />
 
-            {/* Personality */}
             <div>
               <label className="block text-slate-500 font-black mb-2 uppercase text-sm">Personality</label>
               <div className="flex flex-wrap gap-2">
-                {PERSONALITIES.map(p => (
+                {PERSONALITIES.map((p) => (
                   <button
                     key={p}
                     onClick={() => setPersonality(p)}
@@ -172,29 +180,24 @@ export const PetSetup: React.FC<PetSetupProps> = ({ onProvision }) => {
         </div>
       </div>
 
-      {/* Sticky Bottom Bar for Action */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#bae6fd] via-[#bae6fd] to-transparent z-50 pointer-events-none pb-8">
-         <div className="max-w-xl mx-auto flex flex-col gap-3 pointer-events-auto pt-16">
-            <button
-              onClick={handleHatch}
-              disabled={!species}
-              className="w-full p-6 text-2xl sm:text-3xl game-button disabled:opacity-50 flex justify-center items-center gap-3 drop-shadow-xl"
-            >
-              <Egg className="w-8 h-8 fill-white" /> HATCH PET!
-            </button>
-            
-            <button
-              onClick={() => {
-                setSpecies(SUGGESTED_SPECIES[Math.floor(Math.random() * SUGGESTED_SPECIES.length)]);
-                setColorTheme(THEMES[Math.floor(Math.random() * THEMES.length)]);
-                setPersonality(PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)]);
-              }}
-              className="w-full p-4 text-lg sm:text-xl game-button game-button-blue shadow-lg flex justify-center items-center gap-2"
-            >
-              <Shuffle className="w-6 h-6" /> SURPRISE ME
-            </button>
-         </div>
+      <div className="absolute left-0 right-0 p-4 bg-gradient-to-t from-[#bae6fd] via-[#bae6fd] to-transparent z-40 pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))] bottom-[4.25rem] sm:bottom-[4.75rem]">
+        <div className="max-w-xl mx-auto flex flex-col gap-3 pointer-events-auto pt-16">
+          <button
+            onClick={handleHatch}
+            disabled={!species}
+            className="w-full p-6 text-2xl sm:text-3xl game-button disabled:opacity-50 flex justify-center items-center gap-3 drop-shadow-xl"
+          >
+            <Egg className="w-8 h-8 fill-white" /> HATCH PET!
+          </button>
+
+          <button
+            onClick={applyRandomSetup}
+            className="w-full p-4 text-lg sm:text-xl game-button game-button-blue shadow-lg flex justify-center items-center gap-2"
+          >
+            <Shuffle className="w-6 h-6" /> SURPRISE ME
+          </button>
+        </div>
       </div>
     </div>
   );
-}
+};
